@@ -14,17 +14,26 @@ class FileStorage(Storage):
             pass
     
     def store(self, filename, contents):
-        with open(self.storage_directory + '/' + filename, 'wb') as fp:
+        fullpath = os.path.normpath(os.path.join(self.storage_directory, filename))
+        if not fullpath.startswith(self.storage_directory):
+            raise Exception("Invalid file path")
+        with open(fullpath, 'wb') as fp:
             fp.write(contents)
     
     def get(self, filename):
-        with open(self.storage_directory + '/' + filename, 'rb') as fp:
+        fullpath = os.path.normpath(os.path.join(self.storage_directory, filename))
+        if not fullpath.startswith(self.storage_directory):
+            raise Exception("Invalid file path")
+        with open(fullpath, 'rb') as fp:
             contents = fp.read()
         return contents
     
     def delete(self, filename):
         try:
-            os.remove(self.storage_directory + '/' + filename)
+            fullpath = os.path.normpath(os.path.join(self.storage_directory, filename))
+            if not fullpath.startswith(self.storage_directory):
+                raise Exception("Invalid file path")
+            os.remove(fullpath)
             return 0
         except Exception as ex:
             return -1
