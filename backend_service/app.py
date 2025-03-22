@@ -19,6 +19,7 @@ import sqlite3
 import logging
 from utils.db_utils import DatabaseUtils
 from utils.file_storage import FileStorage
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 
@@ -92,19 +93,19 @@ def store_file():
     is_admin = True if request.cookies.get('admin', 'false')=='true' else False
 
     if request.method == 'GET':
-        filename = request.args.get('filename')
+        filename = secure_filename(request.args.get('filename'))
         return fs.get(filename)
     elif request.method == 'POST':
         if not is_admin: return "Need admin access"
         uploaded_files = request.files
         logging.error(uploaded_files)
         for f in uploaded_files:
-            fs.store(uploaded_files[f].name, uploaded_files[f].read())
+            fs.store(secure_filename(uploaded_files[f].name), uploaded_files[f].read())
             logging.info(f'Uploaded filename: {uploaded_files[f].name}')
         return "Files uploaded successfully"
     elif request.method == 'DELETE':
         if not is_admin: return "Need admin access"
-        filename = request.args.get('filename')
+        filename = secure_filename(request.args.get('filename'))
         fs.delete(filename)
         return f"{escape(filename)} deleted successfully"
     else:
