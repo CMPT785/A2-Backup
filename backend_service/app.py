@@ -17,13 +17,15 @@ import jwt
 import pickle
 import sqlite3
 import logging
+import datetime
+import os
 from utils.db_utils import DatabaseUtils
 from utils.file_storage import FileStorage
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 
-SECRET_KEY = "secret_key"
+SECRET_KEY = os.getenv("SECRET_KEY")
 
 logging.basicConfig(level=logging.INFO)
 db = DatabaseUtils()
@@ -39,7 +41,6 @@ def _init_app():
                         );''')
     db.update_data("INSERT INTO users (username, password, privilege) VALUES ('user1', 'password1', 0)")
     db.update_data("INSERT INTO users (username, password, privilege) VALUES ('admin1', 'adminpassword1', 1)")
-        
 
 def _check_login():
     auth_token = request.cookies.get('token', None)
@@ -53,7 +54,6 @@ def _check_login():
         raise "Token is invalid"
     return data
 
-
 @app.route("/login", methods=["POST"])
 def login():
     username = request.json.get("username")
@@ -64,7 +64,8 @@ def login():
     if len(rows) != 1:
         return "Invalid credentials"
     
-    token = jwt.encode({ "username": username }, SECRET_KEY, algorithm="HS256")
+    expiry = datetime.datetime.utcnow() + datetime.timedelta(minutes=15)
+    token = jwt.encode({"username": username, "exp": expiry, "admin": rows[0][-1] == 1}, SECRET_KEY, algorithm="HS256")
     obfuscate1 = pickle.dumps(token.encode())
     obfuscate2 = obfuscate1.hex()
     obfuscate3 = obfuscate2[len(obfuscate2)//2:] + obfuscate2[:len(obfuscate2)//2]
@@ -74,10 +75,8 @@ def login():
 
     res = make_response()
     res.set_cookie("token", value=obfuscate3, httponly=True, samesite='Lax')
-    res.set_cookie("admin", value='true' if rows[0][-1]==1 else 'false', httponly=True, samesite='Lax')
 
     return res
-
 
 @app.route("/file", methods=["GET", "POST", "DELETE"])
 def store_file():
@@ -90,7 +89,7 @@ def store_file():
     except:
         return "Not logged in"
 
-    is_admin = True if request.cookies.get('admin', 'false')=='true' else False
+    is_admin = data.get("admin", False)
 
     if request.method == 'GET':
         filename = secure_filename(request.args.get('filename'))
@@ -111,6 +110,14 @@ def store_file():
     else:
         return "Method not implemented"
 
+@app.after_request
+def add_security_headers(response):
+    response.headers['Content-Security-Policy'] = "default-src 'self'"
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+    return response
 
 if __name__ == "__main__":
     _init_app()
