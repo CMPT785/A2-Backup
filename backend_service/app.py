@@ -12,7 +12,7 @@ How:
 Research on common SQL and JWT issues and bypasses.
 """
 
-from flask import Flask, request, make_response
+from flask import Flask, request, make_response, escape
 import jwt
 import pickle
 import sqlite3
@@ -106,7 +106,7 @@ def store_file():
         if not is_admin: return "Need admin access"
         filename = request.args.get('filename')
         fs.delete(filename)
-        return f"{filename} deleted successfully"
+        return f"{escape(filename)} deleted successfully"
     else:
         return "Method not implemented"
 
