@@ -2,9 +2,8 @@ name: "CodeQL Advanced Scan"
 
 on:
   push:
-    branches: [ "test" ]
-  pull_request:
-    branches: [ "main" ]
+    branches: [ "**" ]
+
 
 jobs:
   analyze:
